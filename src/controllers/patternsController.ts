@@ -1,4 +1,4 @@
-import express, { Router, type Request, type Response } from "express";
+import express, { Router, type NextFunction, type Request, type Response } from "express";
 import { BadRequestError } from "../errors.js";
 import type { IValidator } from "../validation/types.js";
 import type { IPatternsManager } from "../managers/types.js";
@@ -28,14 +28,17 @@ export class PatternsController {
     }
 
     private registerRoutes(): void {
-        // Per-route body parsers: create/replace receive raw gzip bytes; rename is JSON.
+        // create/replace receive raw gzip bytes; rename is JSON. Content-Encoding is
+        // stripped first (see stripContentEncoding) so the body parser neither inflates
+        // nor rejects gzip bodies — the manager decompresses them manually, exactly like
+        // the .NET service (which ignores Content-Encoding and gunzips the raw body).
         const raw = express.raw({ type: "*/*", limit: MAX_BODY });
         const json = express.json();
 
         this.router.get("/", this.getAll);
         this.router.get("/:id", this.getById);
-        this.router.post("/", raw, this.create);
-        this.router.put("/:id", raw, this.replace);
+        this.router.post("/", this.stripContentEncoding, raw, this.create);
+        this.router.put("/:id", this.stripContentEncoding, raw, this.replace);
         this.router.patch("/:id/rename", json, this.rename);
         this.router.delete("/:id", this.delete);
     }
@@ -119,6 +122,13 @@ export class PatternsController {
 
         const deleted = await this.manager.delete(id);
         res.status(deleted ? 204 : 404).end();
+    };
+
+    private readonly stripContentEncoding = (req: Request, _res: Response, next: NextFunction): void => {
+        // The body is always raw gzip; removing Content-Encoding stops the body parser
+        // from inflating or rejecting it, so the manager can decompress it manually.
+        delete req.headers["content-encoding"];
+        next();
     };
 
     private requireBuffer(req: Request): Buffer | undefined {

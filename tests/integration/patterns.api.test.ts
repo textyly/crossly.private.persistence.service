@@ -91,6 +91,19 @@ describe("patterns API (integration)", () => {
         expect((await request(app).get("/api/v1/patterns/missing")).status).to.equal(404);
     });
 
+    it("accepts a create that declares Content-Encoding: gzip (as the UI does)", async () => {
+        // The body is raw gzip and the client declares Content-Encoding: gzip — the service
+        // must not double-decompress or reject it. (octet-stream avoids supertest serializing
+        // the Buffer; the real UI uses fetch with application/json + the same header.)
+        const response = await request(app)
+            .post("/api/v1/patterns")
+            .set("Content-Type", "application/octet-stream")
+            .set("Content-Encoding", "gzip")
+            .send(gzipOf(sample));
+
+        expect(response.status).to.equal(201);
+    });
+
     it("POST with an invalid data model returns 400", async () => {
         const response = await request(app)
             .post("/api/v1/patterns")
