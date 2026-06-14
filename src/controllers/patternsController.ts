@@ -43,8 +43,8 @@ export class PatternsController {
         this.router.delete("/:id", this.delete);
     }
 
-    private readonly getAll = async (_req: Request, res: Response): Promise<void> => {
-        const links = await this.manager.getAll();
+    private readonly getAll = async (req: Request, res: Response): Promise<void> => {
+        const links = await this.manager.getAll(req.clientId as string);
         res.status(200).json({ links });
     };
 
@@ -55,7 +55,7 @@ export class PatternsController {
             return;
         }
 
-        const compressed = await this.manager.getById(id);
+        const compressed = await this.manager.getById(id, req.clientId as string);
         if (!compressed) {
             res.status(404).end();
             return;
@@ -72,7 +72,7 @@ export class PatternsController {
         }
 
         try {
-            const link = await this.manager.create(body);
+            const link = await this.manager.create(body, req.clientId as string);
             res.status(201).location(link.getById).json({ link });
         } catch (error) {
             this.handleError(error, res);
@@ -93,7 +93,7 @@ export class PatternsController {
         }
 
         try {
-            const replaced = await this.manager.replace(id, body);
+            const replaced = await this.manager.replace(id, body, req.clientId as string);
             res.status(replaced ? 200 : 404).end();
         } catch (error) {
             this.handleError(error, res);
@@ -109,7 +109,7 @@ export class PatternsController {
             return;
         }
 
-        const renamed = await this.manager.rename(id, newName as string);
+        const renamed = await this.manager.rename(id, newName as string, req.clientId as string);
         res.status(renamed ? 200 : 404).end();
     };
 
@@ -120,7 +120,7 @@ export class PatternsController {
             return;
         }
 
-        const deleted = await this.manager.delete(id);
+        const deleted = await this.manager.delete(id, req.clientId as string);
         res.status(deleted ? 204 : 404).end();
     };
 

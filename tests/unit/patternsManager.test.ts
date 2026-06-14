@@ -10,15 +10,38 @@ import { BadRequestError } from "../../src/errors.js";
 import type { IPatternsRepository, PatternDocument } from "../../src/repository/types.js";
 
 class InMemoryPatternsRepository implements IPatternsRepository {
-    private readonly store: Map<string, PatternDocument> = new Map();
+    private readonly store: Map<string, { owner: string; document: PatternDocument }> = new Map();
     private seq: number = 0;
 
-    public async getAllIds(): Promise<string[]> { return [...this.store.keys()]; }
-    public async getById(id: string): Promise<PatternDocument | undefined> { const d = this.store.get(id); return d ? { ...d } : undefined; }
-    public async create(document: PatternDocument): Promise<string> { const id = `id-${++this.seq}`; this.store.set(id, { ...document }); return id; }
-    public async replace(id: string, name: string, document: PatternDocument): Promise<boolean> { const e = this.store.get(id); if (!e || e.name !== name) return false; this.store.set(id, { ...document }); return true; }
-    public async rename(id: string, newName: string): Promise<boolean> { const e = this.store.get(id); if (!e) return false; this.store.set(id, { ...e, name: newName }); return true; }
-    public async delete(id: string): Promise<boolean> { return this.store.delete(id); }
+    public async getAllIds(owner: string): Promise<string[]> {
+        return [...this.store.entries()].filter(([, v]) => v.owner === owner).map(([id]) => id);
+    }
+    public async getById(id: string, owner: string): Promise<PatternDocument | undefined> {
+        const e = this.store.get(id);
+        return e && e.owner === owner ? { ...e.document } : undefined;
+    }
+    public async create(document: PatternDocument, owner: string): Promise<string> {
+        const id = `id-${++this.seq}`;
+        this.store.set(id, { owner, document: { ...document } });
+        return id;
+    }
+    public async replace(id: string, name: string, document: PatternDocument, owner: string): Promise<boolean> {
+        const e = this.store.get(id);
+        if (!e || e.owner !== owner || e.document.name !== name) return false;
+        this.store.set(id, { owner, document: { ...document } });
+        return true;
+    }
+    public async rename(id: string, newName: string, owner: string): Promise<boolean> {
+        const e = this.store.get(id);
+        if (!e || e.owner !== owner) return false;
+        this.store.set(id, { owner, document: { ...e.document, name: newName } });
+        return true;
+    }
+    public async delete(id: string, owner: string): Promise<boolean> {
+        const e = this.store.get(id);
+        if (!e || e.owner !== owner) return false;
+        return this.store.delete(id);
+    }
 }
 
 const sample: CrosslyDataModel = {
@@ -31,6 +54,8 @@ const sample: CrosslyDataModel = {
 
 const gzipOf = (model: CrosslyDataModel): Buffer => gzipSync(Buffer.from(JSON.stringify(model), "utf8"));
 
+const OWNER = "owner-1";
+
 describe("PatternsManager", () => {
     const compressor = new GzipCompressor();
     let manager: PatternsManager;
@@ -40,17 +65,17 @@ describe("PatternsManager", () => {
     });
 
     it("creates a pattern and returns its link", async () => {
-        const link = await manager.create(gzipOf(sample));
+        const link = await manager.create(gzipOf(sample), OWNER);
 
         expect(link.getById).to.match(/^\/api\/v1\/patterns\//);
-        expect(await manager.getAll()).to.have.length(1);
+        expect(await manager.getAll(OWNER)).to.have.length(1);
     });
 
     it("round-trips the data model through create + getById (gzip)", async () => {
-        const link = await manager.create(gzipOf(sample));
+        const link = await manager.create(gzipOf(sample), OWNER);
         const id = link.getById.split("/").pop() as string;
 
-        const compressed = await manager.getById(id);
+        const compressed = await manager.getById(id, OWNER);
         expect(compressed).to.be.instanceOf(Buffer);
 
         const decoded = await compressor.decompressToDataModel(compressed as Buffer);
@@ -60,7 +85,7 @@ describe("PatternsManager", () => {
     it("rejects an invalid data model with BadRequestError", async () => {
         let error: unknown;
         try {
-            await manager.create(gzipOf({ ...sample, name: "" }));
+            await manager.create(gzipOf({ ...sample, name: "" }), OWNER);
         } catch (caught) {
             error = caught;
         }
@@ -68,15 +93,28 @@ describe("PatternsManager", () => {
     });
 
     it("returns undefined for an unknown id", async () => {
-        expect(await manager.getById("missing")).to.equal(undefined);
+        expect(await manager.getById("missing", OWNER)).to.equal(undefined);
     });
 
     it("renames and deletes", async () => {
-        const link = await manager.create(gzipOf(sample));
+        const link = await manager.create(gzipOf(sample), OWNER);
         const id = link.getById.split("/").pop() as string;
 
-        expect(await manager.rename(id, "new name")).to.equal(true);
-        expect(await manager.delete(id)).to.equal(true);
-        expect(await manager.delete(id)).to.equal(false);
+        expect(await manager.rename(id, "new name", OWNER)).to.equal(true);
+        expect(await manager.delete(id, OWNER)).to.equal(true);
+        expect(await manager.delete(id, OWNER)).to.equal(false);
+    });
+
+    it("scopes patterns by owner — another owner cannot see or mutate them", async () => {
+        const link = await manager.create(gzipOf(sample), OWNER);
+        const id = link.getById.split("/").pop() as string;
+
+        expect(await manager.getAll("other-owner")).to.have.length(0);
+        expect(await manager.getById(id, "other-owner")).to.equal(undefined);
+        expect(await manager.rename(id, "hijacked", "other-owner")).to.equal(false);
+        expect(await manager.delete(id, "other-owner")).to.equal(false);
+
+        // The real owner is unaffected.
+        expect(await manager.getAll(OWNER)).to.have.length(1);
     });
 });
