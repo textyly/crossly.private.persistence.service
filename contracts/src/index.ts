@@ -74,7 +74,7 @@ export interface CreateResponse {
     link: Link;
 }
 
-/** Request body of `PATCH /api/v1/patterns/{id}/rename`. */
+/** Request body of `PATCH /api/v1/patterns/{id}` (rename). */
 export interface RenameRequest {
-    newName: string;
+    name: string;
 }

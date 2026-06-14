@@ -8,7 +8,7 @@ describe("ApiGenerator", () => {
         expect(generator.generateLink("abc")).to.deep.equal({
             getById: "/api/v1/patterns/abc",
             replace: "/api/v1/patterns/abc",
-            rename: "/api/v1/patterns/abc/rename",
+            rename: "/api/v1/patterns/abc",
             delete: "/api/v1/patterns/abc",
         });
     });

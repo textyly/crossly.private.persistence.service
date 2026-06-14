@@ -38,13 +38,13 @@ export class MongoPatternsRepository implements IPatternsRepository {
         return result.insertedId.toHexString();
     }
 
-    public async replace(id: string, name: string, document: PatternDocument, owner: string): Promise<boolean> {
+    public async replace(id: string, document: PatternDocument, owner: string): Promise<boolean> {
         const objectId = this.toObjectId(id);
         if (!objectId) {
             return false;
         }
 
-        const result = await this.collection.replaceOne({ _id: objectId, name, owner }, { ...document, owner });
+        const result = await this.collection.replaceOne({ _id: objectId, owner }, { ...document, owner });
         return result.modifiedCount === 1;
     }
 

@@ -5,15 +5,16 @@ import type { IApiGenerator } from "./types.js";
 const BASE_PATH: string = "/api/v1/patterns";
 
 /**
- * Default {@link IApiGenerator}. Produces the same link set as the .NET
- * ApiGenerator: getById/replace/delete point at `/{id}`, rename at `/{id}/rename`.
+ * Default {@link IApiGenerator}. All operations on a pattern share the `/{id}`
+ * path, differentiated by HTTP method: GET/PUT/PATCH/DELETE (rename is a PATCH of
+ * the `name`, so it no longer has its own `/rename` sub-path).
  */
 export class ApiGenerator implements IApiGenerator {
     public generateLink(id: string): Link {
         return {
             getById: `${BASE_PATH}/${id}`,
             replace: `${BASE_PATH}/${id}`,
-            rename: `${BASE_PATH}/${id}/rename`,
+            rename: `${BASE_PATH}/${id}`,
             delete: `${BASE_PATH}/${id}`,
         };
     }

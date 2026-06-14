@@ -61,7 +61,7 @@ export class PatternsManager implements IPatternsManager {
         }
 
         const document = this.converter.toDocument(dataModel);
-        return this.repository.replace(id, dataModel.name, document, owner);
+        return this.repository.replace(id, document, owner);
     }
 
     public rename(id: string, newName: string, owner: string): Promise<boolean> {

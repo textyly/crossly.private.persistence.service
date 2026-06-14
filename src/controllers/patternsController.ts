@@ -13,7 +13,7 @@ const MAX_BODY: string = "16mb";
  *   GET    /:id             -> gzip data model (application/octet-stream)
  *   POST   /                -> create from gzip body (201 + Location + { link })
  *   PUT    /:id             -> replace from gzip body (200/404)
- *   PATCH  /:id/rename       -> rename ({ newName }) (200/404)
+ *   PATCH  /:id             -> rename ({ name }) (200/404)
  *   DELETE /:id             -> delete (204/404)
  */
 export class PatternsController {
@@ -39,7 +39,7 @@ export class PatternsController {
         this.router.get("/:id", this.getById);
         this.router.post("/", this.stripContentEncoding, raw, this.create);
         this.router.put("/:id", this.stripContentEncoding, raw, this.replace);
-        this.router.patch("/:id/rename", json, this.rename);
+        this.router.patch("/:id", json, this.rename);
         this.router.delete("/:id", this.delete);
     }
 
@@ -102,14 +102,14 @@ export class PatternsController {
 
     private readonly rename = async (req: Request, res: Response): Promise<void> => {
         const id = req.params.id;
-        const newName = req.body?.newName as string | undefined;
+        const name = req.body?.name as string | undefined;
 
-        if (!this.validator.isValidId(id) || !this.validator.isValidName(newName)) {
-            res.status(400).json({ error: "id or newName is not valid" });
+        if (!this.validator.isValidId(id) || !this.validator.isValidName(name)) {
+            res.status(400).json({ error: "id or name is not valid" });
             return;
         }
 
-        const renamed = await this.manager.rename(id, newName as string, req.clientId as string);
+        const renamed = await this.manager.rename(id, name as string, req.clientId as string);
         res.status(renamed ? 200 : 404).end();
     };
 

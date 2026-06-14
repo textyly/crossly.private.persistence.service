@@ -22,9 +22,9 @@ class InMemoryPatternsRepository implements IPatternsRepository {
         this.store.set(id, { owner, document: { ...document } });
         return id;
     }
-    public async replace(id: string, name: string, document: PatternDocument, owner: string): Promise<boolean> {
+    public async replace(id: string, document: PatternDocument, owner: string): Promise<boolean> {
         const e = this.store.get(id);
-        if (!e || e.owner !== owner || e.document.name !== name) return false;
+        if (!e || e.owner !== owner) return false;
         this.store.set(id, { owner, document: { ...document } });
         return true;
     }
@@ -134,9 +134,9 @@ describe("patterns API (integration, cookie auth)", () => {
         const id = idOf(created);
 
         const response = await request(app)
-            .patch(`/api/v1/patterns/${id}/rename`)
+            .patch(`/api/v1/patterns/${id}`)
             .set("Cookie", cookieA)
-            .send({ newName: "renamed" });
+            .send({ name: "renamed" });
         expect(response.status).to.equal(200);
     });
 

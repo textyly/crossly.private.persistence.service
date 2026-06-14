@@ -21,8 +21,8 @@ export interface IPatternsRepository {
     /** Insert a new pattern owned by `owner`; returns its generated id. */
     create(document: PatternDocument, owner: string): Promise<string>;
 
-    /** Replace the pattern matching `id` AND `name` owned by `owner`; `false` if no match. */
-    replace(id: string, name: string, document: PatternDocument, owner: string): Promise<boolean>;
+    /** Replace the pattern `id` owned by `owner`; `false` if not found. */
+    replace(id: string, document: PatternDocument, owner: string): Promise<boolean>;
 
     /** Rename the pattern `id` owned by `owner`; `false` if not found. */
     rename(id: string, newName: string, owner: string): Promise<boolean>;
