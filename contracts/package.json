@@ -1,6 +1,6 @@
 {
   "name": "@textyly/crossly-private-persistence-contracts",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Shared contracts (pattern data model + HATEOAS links) for the Crossly Private Persistence service, consumable by clients such as crossly.ui.",
   "type": "module",
   "main": "./dist/index.js",
